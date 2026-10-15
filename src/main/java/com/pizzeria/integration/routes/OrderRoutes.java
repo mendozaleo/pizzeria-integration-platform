@@ -15,68 +15,36 @@ public class OrderRoutes extends RouteBuilder {
                 .setBody(constant("Pedido de prueba: pizza grande"))
                 .log("Pedido de prueba: ${body}");
 
-        /*
-         * 
-         * 
-         * from("direct:procesar-pedido")
-         * .routeId("procesar-pedido")
-         * .log("Pedido recibido: ${body}")
-         * .process(exchange -> {
-         * OrderRequest order = exchange.getMessage().getBody(OrderRequest.class);
-         * 
-         * String result = "Pedido recibido para "
-         * + order.customerName()
-         * + ". Tipo: "
-         * + order.orderType();
-         * 
-         * exchange.getMessage().setBody(result);
-         * })
-         * .log("${body}");
-         */
+        from("direct:procesar-pedido")
+                .routeId("procesar-pedido")
+                .log("Pedido recibido: ${body}")
+                .choice()
+                .when(simple("${body.orderType} == 'URGENT'"))
+                .log("Enrutando pedido URGENTE")
+                .process(exchange -> {
+                    OrderRequest order = exchange.getMessage()
+                            .getBody(OrderRequest.class);
 
-        /*
-         * 
-         * Content-Based Router
-         * from("direct:procesar-pedido")
-         * .routeId("procesar-pedido")
-         * .log("Pedido recibido: ${body}")
-         * .choice()
-         * .when(
-         * simple("${body.orderType} == 'URGENT'")
-         * )
-         * .log("Enrutando pedido URGENTE")
-         * .process(exchange -> {
-         * OrderRequest order = exchange.getMessage()
-         * .getBody(OrderRequest.class);
-         * 
-         * exchange.getMessage().setBody(
-         * "Pedido URGENTE recibido para "
-         * + order.customerName()
-         * );
-         * })
-         * .when(
-         * simple("${body.orderType} == 'NORMAL'")
-         * )
-         * .log("Enrutando pedido NORMAL")
-         * .process(exchange -> {
-         * OrderRequest order = exchange.getMessage()
-         * .getBody(OrderRequest.class);
-         * 
-         * exchange.getMessage().setBody(
-         * "Pedido NORMAL recibido para "
-         * + order.customerName()
-         * );
-         * })
-         * .otherwise()
-         * .log("Tipo de pedido no reconocido")
-         * .setBody(
-         * constant("Error: tipo de pedido no reconocido")
-         * )
-         * .end()
-         * .log("Resultado: ${body}");
-         * 
-         * 
-         */
+                    exchange.getMessage().setBody(
+                            "Pedido URGENTE recibido para "
+                                    + order.customerName());
+                })
+                .when(simple("${body.orderType} == 'NORMAL'"))
+                .log("Enrutando pedido NORMAL")
+                .process(exchange -> {
+                    OrderRequest order = exchange.getMessage()
+                            .getBody(OrderRequest.class);
+
+                    exchange.getMessage().setBody(
+                            "Pedido NORMAL recibido para "
+                                    + order.customerName());
+                })
+                .otherwise()
+                .log("Tipo de pedido no reconocido")
+                .setBody(
+                        constant("Error: tipo de pedido no reconocido"))
+                .end()
+                .log("Resultado: ${body}");
 
         from("direct:filtrar-pedidos-whatsapp")
                 .routeId("filtrar-pedidos-whatsapp")

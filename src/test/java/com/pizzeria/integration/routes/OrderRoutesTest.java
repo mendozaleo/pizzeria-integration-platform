@@ -11,6 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 @SpringBootTest
 class OrderRoutesTest {
 
@@ -30,27 +32,8 @@ class OrderRoutesTest {
         mockEndpoint.reset();
         mockEndpoint.expectedMessageCount(1);
 
-        OrderRequest whatsappOrder = new OrderRequest(
-                "Enrique",
-                "WHATSAPP",
-                "URGENT",
-                List.of(new OrderRequest.OrderItem(
-                        "Pizza grande",
-                        1,
-                        new BigDecimal("190.00")
-                ))
-        );
-
-        OrderRequest webOrder = new OrderRequest(
-                "Enrique",
-                "WEB",
-                "NORMAL",
-                List.of(new OrderRequest.OrderItem(
-                        "Pizza mediana",
-                        1,
-                        new BigDecimal("120.00")
-                ))
-        );
+        OrderRequest whatsappOrder = createOrder("WHATSAPP", "URGENT");
+        OrderRequest webOrder = createOrder("WEB", "NORMAL");
 
         producerTemplate.sendBody(
                 "direct:filtrar-pedidos-whatsapp",
@@ -63,5 +46,68 @@ class OrderRoutesTest {
         );
 
         mockEndpoint.assertIsSatisfied();
+    }
+
+    @Test
+    void shouldProcessUrgentOrder() {
+        OrderRequest order = createOrder("WHATSAPP", "URGENT");
+
+        String result = producerTemplate.requestBody(
+                "direct:procesar-pedido",
+                order,
+                String.class
+        );
+
+        assertEquals(
+                "Pedido URGENTE recibido para Enrique",
+                result
+        );
+    }
+
+    @Test
+    void shouldProcessNormalOrder() {
+        OrderRequest order = createOrder("WEB", "NORMAL");
+
+        String result = producerTemplate.requestBody(
+                "direct:procesar-pedido",
+                order,
+                String.class
+        );
+
+        assertEquals(
+                "Pedido NORMAL recibido para Enrique",
+                result
+        );
+    }
+
+    @Test
+    void shouldRejectUnknownOrderType() {
+        OrderRequest order = createOrder("WEB", "EXPRESS");
+
+        String result = producerTemplate.requestBody(
+                "direct:procesar-pedido",
+                order,
+                String.class
+        );
+
+        assertEquals(
+                "Error: tipo de pedido no reconocido",
+                result
+        );
+    }
+
+    private OrderRequest createOrder(String channel, String orderType) {
+        return new OrderRequest(
+                "Enrique",
+                channel,
+                orderType,
+                List.of(
+                        new OrderRequest.OrderItem(
+                                "Pizza grande",
+                                1,
+                                new BigDecimal("190.00")
+                        )
+                )
+        );
     }
 }
